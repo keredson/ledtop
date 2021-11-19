@@ -56,4 +56,19 @@ If you want more than one display of each type, name them like:
 ...
 ```
 
+## Colors
+
+Default LED colors are the same as `htop`.  For CPU usage the color key is:
+- Blue: low priority processes (nice > 0)
+- Green: normal (user) processes.
+- Red: kernel processes.
+- Yellow: IRQ time.
+- Magenta: Soft IRQ time.
+- Grey: IO Wait time.
+
+Memory:
+- Green: Used memory pages.
+- Blue: Buffer pages.
+- Orange: Cache pages.
+- Grey: Free (unused)
 
