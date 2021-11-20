@@ -1,4 +1,4 @@
-import os, time
+import os, sys, time
 
 import psutil
 import darp
@@ -34,15 +34,23 @@ class Display:
     if 'size' in config:
       self.size = config['size']
       zone.resize(config['size'])
+    else:
+      self.size = len(zone.leds)
       
     if 'leds' in config:
-      led_start, led_end = [int(s) for s in config['leds'].split('-')]
-      if led_start > led_end:
-        self.leds = slice(led_end-1, led_start, -1)
-      else:
-        self.leds = slice(led_start-1, led_end)
+      if '-' in config['leds']:
+        led_start, led_end = [int(s) for s in config['leds'].split('-')]
+        if led_start > led_end:
+          self.leds = slice(led_end-1, led_start, -1)
+        else:
+          self.leds = slice(led_start-1, led_end)
+      elif config['leds'].isnumeric():
+        self.leds = slice(int(config['leds'])-1, int(config['leds']))
+    elif 'led' in config:
+      self.leds = slice(config['led']-1, config['led'])
     else:
       self.leds = slice(0, self.size)
+    
     
     self.brightness = config.get('brightness', 100)
   
@@ -107,6 +115,39 @@ class Memory(Display):
       self.zone.colors[self.leds] = colors
 
 
+class Temp(Display):
+
+  def __init__(self, client, config):
+    super().__init__(client, config)
+    self.component = config.get('component')
+    self.sensor = config.get('sensor')
+    self.low = config.get('low')
+    self.high = config.get('high')
+    
+  def show(self, temps):
+    if self.component:
+      component = temps[self.component]
+    else:
+      component = temps.items()[0][1]
+    if self.sensor:
+      sensor = [s for s in component if s.label==self.sensor][0]
+    else:
+      sensor = component[0]
+    low = self.low or 20
+    high = self.high or sensor.high or 90
+    temp = (sensor.current - low) / (high - low) # [0-1]
+    temp = max(temp,0)
+    temp = min(temp,1)
+    color = openrgb.utils.RGBColor(
+      int(round((255 * temp))),
+      int(round(128*(1-temp))),
+      0
+    )
+    num_leds = abs(self.leds.stop - self.leds.start)
+    self.zone.colors[self.leds] = [color] * num_leds
+    
+
+
 
 class LEDTop:
 
@@ -130,17 +171,25 @@ class LEDTop:
         if isinstance(v, dict):
           self.mems.append(Memory(self.client, v))
 
+    self.temps = []
+    if 'temp' in self.config:
+      if isinstance(self.config['temp'].get('device'), str):
+        self.temps.append(Temp(self.client, self.config['temp']))
+      for k,v in self.config['temp'].items():
+        if isinstance(v, dict):
+          self.temps.append(Temp(self.client, v))
+
     
   def reset_leds(self):
     seen = set()
-    for cpu in self.cpus:
+    for cpu in self.cpus + self.mems + self.temps:
       if cpu.zone in seen: continue
       seen.add(cpu.zone)
-      cpu.zone.colors = [cpu.idle_color] * cpu.size
+      cpu.zone.colors = [openrgb.utils.RGBColor(0,0,0)] * cpu.size
         
   def show_all(self):
     seen = set()
-    for cpu in self.cpus:
+    for cpu in self.cpus + self.mems + self.temps:
       if cpu.zone in seen: continue
       seen.add(cpu.zone)
       cpu.zone.show()
@@ -150,22 +199,49 @@ class LEDTop:
     while True:
       cpu_times = psutil.cpu_times_percent(interval=1, percpu=False)
       svmem = psutil.virtual_memory()
+      temps = psutil.sensors_temperatures()
       self.reset_leds()
       for cpu in self.cpus:
         cpu.show(cpu_times)
       for mem in self.mems:
         mem.show(svmem)
+      for temp in self.temps:
+        temp.show(temps)
       self.show_all()
     
   
 
-def main(config:str=None):
+def main(config:str=None, info:bool=False):
   '''
-    LEDTop
     https://github.com/keredson/ledtop
   '''
+  
+  if info:
+  
+    print('--------------')
+    print(' LED Displays')
+    print('--------------')
+    client = openrgb.OpenRGBClient()
+    for device in client.devices:
+      print(f'Device: {repr(device.name)} (id:{device.id})')
+      for zone in device.zones:
+        print(f' - zone: {repr(zone.name)} (id:{zone.id})')
+        
+      
+  
+    print()
+    print('---------------------')
+    print(' Temperature Sensors')
+    print('---------------------')
+    for dev, sensors in psutil.sensors_temperatures().items():
+      print(f'Device: {repr(dev)}')
+      for sensor in sensors:
+        print(f' - sensor: {repr(sensor.label)} ({int(round(sensor.current))}°C)')
+    print('\n[https://github.com/keredson/ledtop]')
+    sys.exit(0)
+  
   if not config:
-    config = os.path.join(appdirs.user_config_dir('LEDTop'), 'config.toml')
+    config = os.path.join(appdirs.user_config_dir('ledtop'), 'config.toml')
   if os.path.isfile(config):
     top = LEDTop(config)
     top.run()
