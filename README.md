@@ -2,7 +2,7 @@
 
 Like `htop` (CPU and memory usage), but for your case LEDs. 😄
 
-![Demo](demo.gif)
+![Demo](https://github.com/keredson/ledtop/raw/main/demo.gif)
 
 In this setup, memory is the left strip, CPU is the right strip.
 

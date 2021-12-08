@@ -13,7 +13,7 @@ def long_description():
 
 setup(
   name='ledtop',
-  version='1.1.0',
+  version='1.1.1',
   description="Like htop (CPU and memory usage), but for your case LEDs.",
   long_description=long_description(),
   author='Derek Anderson',
