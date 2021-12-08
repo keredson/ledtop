@@ -83,7 +83,7 @@ There are three section types with the following options:
 |--------|---------|----------|
 |`device`|A string or an integer, corresponding to OpenRGB's device name or ID.|✓|
 |`zone`  |A string or an integer, corresponding to OpenRGB's zone name or ID.|✓|
-|`size`  |The number of LEDs in your zone.  Will call `zone.resize()` in OpenRGB.||
+|`size`  |The number of LEDs in your zone.  Will call `zone.resize()` in OpenRGB.|✓ (If not set by OpenRGB config.)|
 |`leds` |Which LEDs to use (a range), inclusive starting at 1.  If the first number is larger than the second, the displayed order will be reversed.  (Say if your strip is mounted upside-down.)  Example: `1-21`|✓|
 |`brightness`  |The brightness of your LEDs, an integer 0-100.||
 |custom cpu colors|A hex RGB string like `#0000ff`. Options: `nice_color`, `user_color`, `system_color`, `iowait_color`, `irq_color`, `softirq_color`, `idle_color` |
